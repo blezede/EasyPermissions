@@ -1,6 +1,7 @@
+[![](https://jitpack.io/v/RystalBlaze/EasyPermissions.svg)](https://jitpack.io/#RystalBlaze/EasyPermissions)
 # EasyPermissions
 简易动态权限申请工具
-[![](https://jitpack.io/v/RystalBlaze/EasyPermissions.svg)](https://jitpack.io/#RystalBlaze/EasyPermissions)
+
 # How to use
 Step 1. Add it in your root build.gradle at the end of repositories:
 
