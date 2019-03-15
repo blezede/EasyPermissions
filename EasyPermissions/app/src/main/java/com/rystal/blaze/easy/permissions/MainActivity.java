@@ -4,11 +4,13 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+
 import com.rystal.blaze.easy.permission.EasyPermissions;
+import com.rystal.blaze.easy.permission.PermissionCallbacks;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks {
+public class MainActivity extends AppCompatActivity implements PermissionCallbacks {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -16,12 +18,13 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         setContentView(R.layout.activity_main);
         /*EasyPermissions.requestPermissions(this,
                 11,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.CALL_PHONE,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.CALL_PHONE,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION},
+                this
         );*/
     }
 
@@ -32,14 +35,14 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     }
 
     @Override
-    public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsGranted(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("MainActivity", "onPermissionsGranted --> requestCode = " + requestCode + "-- perms = " + per);
         }
     }
 
     @Override
-    public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsDenied(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("MainActivity", "onPermissionsDenied --> requestCode = " + requestCode + "-- perms = " + per);
         }
@@ -47,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     }
 
     @Override
-    public void onPermissionsDeniedNeverAskAgain(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsDeniedNeverAskAgain(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("MainActivity", "onPermissionsDeniedNeverAskAgain --> requestCode = " + requestCode + "-- perms = " + per);
         }

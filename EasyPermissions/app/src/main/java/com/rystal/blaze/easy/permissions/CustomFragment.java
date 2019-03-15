@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import com.rystal.blaze.easy.permission.EasyPermissions;
+import com.rystal.blaze.easy.permission.PermissionCallbacks;
 import java.util.List;
 
 /**
@@ -18,7 +19,7 @@ import java.util.List;
  * Time: 2019/3/12 16:19
  * Description:
  */
-public class CustomFragment extends Fragment implements EasyPermissions.PermissionCallbacks{
+public class CustomFragment extends Fragment implements PermissionCallbacks {
 
     @Nullable
     @Override
@@ -32,14 +33,26 @@ public class CustomFragment extends Fragment implements EasyPermissions.Permissi
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        /*EasyPermissions.requestPermissions(this,
+                11,
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.CALL_PHONE,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION},
+                this
+        );*/
         EasyPermissions.requestPermissions(this,
                 11,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.CALL_PHONE,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.CALL_PHONE,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION},
+                this,
+                new Example()
         );
     }
 
@@ -50,14 +63,14 @@ public class CustomFragment extends Fragment implements EasyPermissions.Permissi
     }
 
     @Override
-    public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsGranted(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("CustomFragment", "onPermissionsGranted --> requestCode = " + requestCode + "-- perms = " + per);
         }
     }
 
     @Override
-    public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsDenied(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("CustomFragment", "onPermissionsDenied --> requestCode = " + requestCode + "-- perms = " + per);
         }
@@ -65,7 +78,7 @@ public class CustomFragment extends Fragment implements EasyPermissions.Permissi
     }
 
     @Override
-    public void onPermissionsDeniedNeverAskAgain(int requestCode, @NonNull List<String> perms) {
+    public void onPermissionsDeniedNeverAskAgain(int requestCode, @NonNull List<String> requestPerms, @NonNull List<String> perms) {
         for (String per : perms) {
             Log.e("CustomFragment", "onPermissionsDeniedNeverAskAgain --> requestCode = " + requestCode + "-- perms = " + per);
         }

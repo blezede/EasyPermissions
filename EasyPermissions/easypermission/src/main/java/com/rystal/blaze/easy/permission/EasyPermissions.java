@@ -7,7 +7,6 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,56 +18,15 @@ import java.util.List;
  */
 public class EasyPermissions {
 
+    private static final int Zero = 0;
     private static final int DEFAULT_RC = -0x1001;
     private static List<String> sDeniedPermissionList = new ArrayList<>();
     private static int sRequestCode = DEFAULT_RC;
+    private static String[] sPermissions;
 
-    private static PermissionCallbacks sPermissionCallbacks;
+    private static List<PermissionCallbacks> sPermissionCallbacksList = new ArrayList<>();
 
-    private static RationaleCallbacks sRationaleCallbacks;
-
-    /**
-     * Callback interface to receive the results of {@code EasyPermissions.requestPermissions()}
-     * calls.
-     */
-    public interface PermissionCallbacks {
-
-        /**
-         * All permissions granted
-         *
-         * @param requestCode
-         * @param perms
-         */
-        void onPermissionsGranted(int requestCode, @NonNull List<String> perms);
-
-        /**
-         * Some permissions common denied
-         *
-         * @param requestCode
-         * @param perms
-         */
-        void onPermissionsDenied(int requestCode, @NonNull List<String> perms);
-
-        /**
-         * All permissions denied when user clicked don't ask again item
-         *
-         * @param requestCode
-         * @param perms
-         */
-        void onPermissionsDeniedNeverAskAgain(int requestCode, @NonNull List<String> perms);
-    }
-
-    /**
-     * Callback interface to receive button clicked events of the rationale dialog
-     *
-     * @deprecated
-     */
-    public interface RationaleCallbacks {
-        void onRationaleAccepted(int requestCode);
-
-        void onRationaleDenied(int requestCode);
-    }
-
+    private static List<RationaleCallbacks> sRationaleCallbacksList = new ArrayList<>();
 
     /**
      * Check whether have some permissions
@@ -133,30 +91,42 @@ public class EasyPermissions {
      * @param permissions
      * @return
      */
-    public static <T> void requestPermissions(T t, int requestCode, String... permissions) {
+    public static <T, K> void requestPermissions(T t, int requestCode, String[] permissions, K... k) {
         sRequestCode = requestCode;
+        sPermissions = permissions;
         if (t == null || permissions == null || permissions.length <= 0) {
+            release();
             return;
         }
-        if (t instanceof PermissionCallbacks) {
-            sPermissionCallbacks = (PermissionCallbacks) t;
-        }
-        if (t instanceof RationaleCallbacks) {
-            sRationaleCallbacks = (RationaleCallbacks) t;
+        sPermissionCallbacksList.clear();
+        sRationaleCallbacksList.clear();
+        if (k != null && k.length > 0) {
+            for (K callBack : k) {
+                if (callBack instanceof PermissionCallbacks) {
+                    sPermissionCallbacksList.add((PermissionCallbacks) callBack);
+                }
+                if (callBack instanceof RationaleCallbacks) {
+                    sRationaleCallbacksList.add((RationaleCallbacks) callBack);
+                }
+            }
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            if (sPermissionCallbacks != null) {
-                sPermissionCallbacks.onPermissionsGranted(requestCode, Arrays.asList(permissions));
+            if (sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+                for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
+                    if (callbacks != null) {
+                        callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), Arrays.asList(sPermissions));
+                        release();
+                    }
+                }
             }
             return;
         }
         if (t instanceof Activity) {
-            requestActivityPerms((Activity) t, permissions, requestCode);
+            requestActivityPerms((Activity) t, sPermissions, requestCode);
         } else if (t instanceof android.support.v4.app.Fragment) {
-            requestFragmentPerms((android.support.v4.app.Fragment) t, permissions, requestCode);
+            requestFragmentPerms((android.support.v4.app.Fragment) t, sPermissions, requestCode);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB && t instanceof android.app.Fragment) {
-            requestFragmentPerms((android.app.Fragment) t, permissions, requestCode);
-
+            requestFragmentPerms((android.app.Fragment) t, sPermissions, requestCode);
         }
     }
 
@@ -195,41 +165,66 @@ public class EasyPermissions {
         return false;
     }
 
-
     public static void onRequestPermissionsResult(Activity act, int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == sRequestCode) {
             if (isPermissionGranted(grantResults)) {
-                if (sPermissionCallbacks != null) {
-                    sPermissionCallbacks.onPermissionsGranted(requestCode, Arrays.asList(permissions));
+                if (sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+                    for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
+                        if (callbacks != null) {
+                            callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), Arrays.asList(permissions));
+                        }
+                    }
                 }
             } else {
+                if (sPermissions == null) {
+                    release();
+                    return;
+                }
                 List<String> granted = new ArrayList<>();
                 List<String> denied = new ArrayList<>();
                 List<String> dontAskDenied = new ArrayList<>();
-                for (int i = 0; i < permissions.length; i++) {
-                    String perm = permissions[i];
-                    if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                for (int i = 0; i < sPermissions.length; i++) {
+                    String perm = sPermissions[i];
+                    if (ContextCompat.checkSelfPermission(act, perm) == PackageManager.PERMISSION_GRANTED) {
                         granted.add(perm);
                     } else {
                         if (!ActivityCompat.shouldShowRequestPermissionRationale(act, perm)) {
                             dontAskDenied.add(perm);
+                        } else {
+                            denied.add(perm);
                         }
-                        denied.add(perm);
                     }
                 }
-                if (!shouldShowRequestPermissions(act, permissions)) {
-                    if (sPermissionCallbacks != null) {
-                        sPermissionCallbacks.onPermissionsDeniedNeverAskAgain(requestCode, dontAskDenied);
+                if (granted.size() > 0 && sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+                    for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
+                        if (callbacks != null) {
+                            callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), granted);
+                        }
                     }
-                    return;
                 }
-                if (sPermissionCallbacks != null) {
-                    sPermissionCallbacks.onPermissionsDenied(requestCode, denied);
+                if (dontAskDenied.size() > 0 && sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+                    for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
+                        if (callbacks != null) {
+                            callbacks.onPermissionsDeniedNeverAskAgain(requestCode, Arrays.asList(sPermissions), dontAskDenied);
+                        }
+                    }
+                }
+                if (denied.size() > 0 && sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+                    for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
+                        if (callbacks != null) {
+                            callbacks.onPermissionsDenied(requestCode, Arrays.asList(sPermissions), denied);
+                        }
+                    }
                 }
             }
-            sPermissionCallbacks = null;
-            sRationaleCallbacks = null;
-            sRequestCode = DEFAULT_RC;
+            release();
         }
+    }
+
+    private static void release() {
+        sPermissionCallbacksList.clear();
+        sRationaleCallbacksList.clear();
+        sRequestCode = DEFAULT_RC;
+        sPermissions = null;
     }
 }
