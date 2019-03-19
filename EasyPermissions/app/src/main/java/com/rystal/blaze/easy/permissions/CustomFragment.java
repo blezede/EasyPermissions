@@ -10,6 +10,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.rystal.blaze.easy.permission.AfterAllPermissionsGranted;
 import com.rystal.blaze.easy.permission.EasyPermissions;
 import com.rystal.blaze.easy.permission.PermissionCallbacks;
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.List;
  */
 public class CustomFragment extends Fragment implements PermissionCallbacks {
 
+    private static final int PERM_RC = 101;
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -34,7 +37,7 @@ public class CustomFragment extends Fragment implements PermissionCallbacks {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         /*EasyPermissions.requestPermissions(this,
-                11,
+                PERM_RC,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         Manifest.permission.READ_PHONE_STATE,
@@ -44,7 +47,7 @@ public class CustomFragment extends Fragment implements PermissionCallbacks {
                 this
         );*/
         EasyPermissions.requestPermissions(this,
-                11,
+                PERM_RC,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         Manifest.permission.READ_PHONE_STATE,
@@ -82,5 +85,10 @@ public class CustomFragment extends Fragment implements PermissionCallbacks {
         for (String per : perms) {
             Log.e("CustomFragment", "onPermissionsDeniedNeverAskAgain --> requestCode = " + requestCode + "-- perms = " + per);
         }
+    }
+
+    @AfterAllPermissionsGranted(PERM_RC)
+    public void afterAllPermissionsGranted() {
+        Log.e("CustomFragment", "afterAllPermissionsGranted -->");
     }
 }

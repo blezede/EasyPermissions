@@ -1,12 +1,17 @@
 package com.rystal.blaze.easy.permission;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
+
+import com.rystal.blaze.easy.permission.helper.PermissionHelper;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,9 +23,10 @@ import java.util.List;
  */
 public class EasyPermissions {
 
+    private static final String TAG = "EasyPermissions";
+
     private static final int Zero = 0;
     private static final int DEFAULT_RC = -0x1001;
-    private static List<String> sDeniedPermissionList = new ArrayList<>();
     private static int sRequestCode = DEFAULT_RC;
     private static String[] sPermissions;
 
@@ -28,26 +34,6 @@ public class EasyPermissions {
 
     private static List<RationaleCallbacks> sRationaleCallbacksList = new ArrayList<>();
 
-    /**
-     * Check whether have some permissions
-     *
-     * @param permissions
-     * @return
-     */
-    public static boolean checkSelfPermission(Context context, String... permissions) {
-        if (context == null || permissions == null) {
-            return false;
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true;
-        }
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     private static boolean isPermissionGranted(int[] grantResults) {
         if (grantResults == null || grantResults.length <= 0) {
@@ -62,34 +48,11 @@ public class EasyPermissions {
     }
 
     /**
-     * Whether have some permissions
-     *
-     * @param permissions
-     * @return
-     */
-    private static boolean hasPermission(Context context, String... permissions) {
-        if (context == null || permissions == null) {
-            return false;
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true;
-        }
-        sDeniedPermissionList.clear();
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                sDeniedPermissionList.add(permission);
-            }
-        }
-        return sDeniedPermissionList.size() == 0;
-    }
-
-    /**
      * Request permissions
      *
      * @param t
      * @param requestCode
      * @param permissions
-     * @return
      */
     public static <T, K> void requestPermissions(T t, int requestCode, String[] permissions, K... k) {
         sRequestCode = requestCode;
@@ -122,47 +85,12 @@ public class EasyPermissions {
             return;
         }
         if (t instanceof Activity) {
-            requestActivityPerms((Activity) t, sPermissions, requestCode);
+            PermissionHelper.newInstance((Activity) t).requestPermissions(requestCode, sPermissions);
         } else if (t instanceof android.support.v4.app.Fragment) {
-            requestFragmentPerms((android.support.v4.app.Fragment) t, sPermissions, requestCode);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB && t instanceof android.app.Fragment) {
-            requestFragmentPerms((android.app.Fragment) t, sPermissions, requestCode);
+            PermissionHelper.newInstance((android.support.v4.app.Fragment) t).requestPermissions(requestCode, sPermissions);
+        } else if (t instanceof android.app.Fragment) {
+            PermissionHelper.newInstance((android.app.Fragment) t).requestPermissions(requestCode, sPermissions);
         }
-    }
-
-    private static void requestActivityPerms(Activity act, String[] perms, int requestCode) {
-        if (!hasPermission(act, perms)) {
-            ActivityCompat.requestPermissions(act,
-                    sDeniedPermissionList.toArray(new String[sDeniedPermissionList.size()]),
-                    requestCode);
-        }
-    }
-
-    private static void requestFragmentPerms(android.support.v4.app.Fragment frag, String[] perms, int requestCode) {
-        if (!hasPermission(frag.getActivity(), perms)) {
-            frag.requestPermissions(sDeniedPermissionList.toArray(new String[sDeniedPermissionList.size()]),
-                    requestCode);
-        }
-    }
-
-    private static void requestFragmentPerms(android.app.Fragment frag, String[] perms, int requestCode) {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M)
-            if (!hasPermission(frag.getActivity(), perms)) {
-                frag.requestPermissions(sDeniedPermissionList.toArray(new String[sDeniedPermissionList.size()]),
-                        requestCode);
-            }
-    }
-
-    private static boolean shouldShowRequestPermissions(Activity activity, String... permissions) {
-        if (activity == null || permissions == null) {
-            return false;
-        }
-        for (String perm : permissions) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static void onRequestPermissionsResult(Activity act, int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -173,8 +101,10 @@ public class EasyPermissions {
                         if (callbacks != null) {
                             callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), Arrays.asList(permissions));
                         }
+                        runAnnotatedMethods(callbacks, requestCode);
                     }
                 }
+
             } else {
                 if (sPermissions == null) {
                     release();
@@ -218,6 +148,58 @@ public class EasyPermissions {
                 }
             }
             release();
+        }
+    }
+
+    private static void runAnnotatedMethods(@NonNull Object object, int requestCode) {
+        Class clazz = object.getClass();
+        if (isUsingAndroidAnnotations(object)) {
+            clazz = clazz.getSuperclass();
+        }
+
+        while (clazz != null) {
+            for (Method method : clazz.getDeclaredMethods()) {
+                AfterAllPermissionsGranted ann = method.getAnnotation(AfterAllPermissionsGranted.class);
+                if (ann != null) {
+                    // Check for annotated methods with matching request code.
+                    if (ann.value() == requestCode) {
+                        // Method must be void so that we can invoke it
+                        if (method.getParameterTypes().length > 0) {
+                            throw new RuntimeException(
+                                    "Cannot execute method " + method.getName() + " because it is non-void method and/or has input parameters.");
+                        }
+
+                        try {
+                            // Make method accessible if private
+                            if (!method.isAccessible()) {
+                                method.setAccessible(true);
+                            }
+                            method.invoke(object);
+                        } catch (IllegalAccessException e) {
+                            Log.e(TAG, "runDefaultMethod:IllegalAccessException", e);
+                        } catch (InvocationTargetException e) {
+                            Log.e(TAG, "runDefaultMethod:InvocationTargetException", e);
+                        }
+                    }
+                }
+            }
+
+            clazz = clazz.getSuperclass();
+        }
+    }
+
+    /**
+     * Determine if the project is using the AndroidAnnotations library.
+     */
+    private static boolean isUsingAndroidAnnotations(@NonNull Object object) {
+        if (!object.getClass().getSimpleName().endsWith("_")) {
+            return false;
+        }
+        try {
+            Class clazz = Class.forName("org.androidannotations.api.view.HasViews");
+            return clazz.isInstance(object);
+        } catch (ClassNotFoundException e) {
+            return false;
         }
     }
 

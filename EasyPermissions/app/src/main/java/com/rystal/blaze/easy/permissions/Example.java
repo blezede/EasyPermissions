@@ -2,7 +2,9 @@ package com.rystal.blaze.easy.permissions;
 
 import android.support.annotation.NonNull;
 import android.util.Log;
+
 import com.rystal.blaze.easy.permission.PermissionCallbacks;
+
 import java.util.List;
 
 /**
