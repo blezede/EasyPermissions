@@ -100,8 +100,8 @@ public class EasyPermissions {
                     for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
                         if (callbacks != null) {
                             callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), Arrays.asList(permissions));
+                            runAnnotatedMethods(callbacks, requestCode);
                         }
-                        runAnnotatedMethods(callbacks, requestCode);
                     }
                 }
 
