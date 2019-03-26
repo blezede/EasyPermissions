@@ -16,6 +16,7 @@ public class MainActivity extends AppCompatActivity implements PermissionCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getSupportFragmentManager().beginTransaction().replace(R.id.frame, new CustomFragment()).commit();
         /*EasyPermissions.requestPermissions(this,
                 11,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,

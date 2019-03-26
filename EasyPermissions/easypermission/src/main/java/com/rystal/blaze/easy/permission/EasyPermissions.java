@@ -50,9 +50,9 @@ public class EasyPermissions {
     /**
      * Request permissions
      *
-     * @param t
-     * @param requestCode
-     * @param permissions
+     * @param t activity or fragment
+     * @param requestCode requestCode
+     * @param permissions permissions
      */
     public static <T, K> void requestPermissions(T t, int requestCode, String[] permissions, K... k) {
         sRequestCode = requestCode;
@@ -74,14 +74,14 @@ public class EasyPermissions {
             }
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            if (sPermissionCallbacksList != null && sPermissionCallbacksList.size() > Zero) {
+            if (sPermissionCallbacksList.size() > Zero) {
                 for (PermissionCallbacks callbacks : sPermissionCallbacksList) {
                     if (callbacks != null) {
                         callbacks.onPermissionsGranted(requestCode, Arrays.asList(sPermissions), Arrays.asList(sPermissions));
-                        release();
                     }
                 }
             }
+            release();
             return;
         }
         if (t instanceof Activity) {
